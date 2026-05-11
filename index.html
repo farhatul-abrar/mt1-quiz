@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mass Transfer Quiz</title>
+<style>
+  :root {
+    --teal: #1D9E75; --teal-dark: #085041; --teal-light: #E1F5EE;
+    --amber: #BA7517; --amber-light: #FAEEDA; --amber-dark: #633806;
+    --coral: #D85A30; --coral-light: #FAECE7; --coral-dark: #993C1D;
+    --blue: #378ADD; --blue-light: #E6F1FB; --blue-dark: #0C447C;
+    --gray-50: #F8F9FA; --gray-100: #F1F3F5; --gray-200: #E9ECEF;
+    --gray-400: #868E96; --gray-600: #495057; --gray-800: #212529;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #F0F4F8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  .header {
+    width: 100%; max-width: 560px;
+    background: var(--teal-dark);
+    color: white;
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title { font-size: 15px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .timer-circle {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+    border: 2px solid rgba(255,255,255,0.3);
+    transition: background 0.3s;
+  }
+  .timer-circle.warn { background: rgba(216,90,48,0.7); border-color: rgba(216,90,48,0.9); }
+  .card {
+    width: 100%; max-width: 560px;
+    background: white;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 1rem;
+  }
+  .screen { display: none; width: 100%; max-width: 560px; flex-direction: column; align-items: center; }
+  .screen.active { display: flex; }
+  h2 { font-size: 18px; font-weight: 700; color: var(--gray-800); margin-bottom: 6px; }
+  p { font-size: 14px; color: var(--gray-600); line-height: 1.5; }
+  label { font-size: 13px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 5px; margin-top: 14px; }
+  input[type=text] {
+    width: 100%; padding: 12px 14px; font-size: 15px;
+    border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+    background: var(--gray-50); color: var(--gray-800); outline: none;
+    transition: border 0.2s;
+  }
+  input[type=text]:focus { border-color: var(--teal); background: white; }
+  .btn {
+    width: 100%; padding: 13px; font-size: 15px; font-weight: 600;
+    border-radius: var(--radius-sm); border: none; cursor: pointer;
+    margin-top: 14px; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--teal); color: white; }
+  .btn-primary:hover { background: var(--teal-dark); }
+  .btn-primary:disabled { background: var(--gray-400); cursor: not-allowed; }
+  .progress-bar {
+    width: 100%; height: 5px;
+    background: var(--gray-200); border-radius: 3px;
+    overflow: hidden; margin-bottom: 1.25rem;
+  }
+  .progress-fill { height: 100%; background: var(--teal); border-radius: 3px; transition: width 0.4s; }
+  .q-number { font-size: 12px; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .q-text { font-size: 16px; font-weight: 600; color: var(--gray-800); line-height: 1.5; margin-bottom: 1.25rem; }
+  .opt {
+    width: 100%; padding: 13px 16px;
+    border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+    background: white; color: var(--gray-700); font-size: 14px; font-weight: 500;
+    text-align: left; cursor: pointer; margin-bottom: 8px;
+    transition: all 0.15s; display: flex; align-items: center; gap: 12px;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
+  .opt.selected { border-color: var(--blue); background: var(--blue-light); color: var(--blue-dark); }
+  .opt.correct { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
+  .opt.wrong { border-color: var(--coral); background: var(--coral-light); color: var(--coral-dark); }
+  .opt.reveal-correct { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
+  .opt:disabled { cursor: not-allowed; }
+  .opt-letter {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--gray-100); color: var(--gray-600);
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .opt.correct .opt-letter, .opt.reveal-correct .opt-letter { background: var(--teal); color: white; }
+  .opt.wrong .opt-letter { background: var(--coral); color: white; }
+  .opt.selected .opt-letter { background: var(--blue); color: white; }
+  .explain-box {
+    background: var(--teal-light); border-radius: var(--radius-sm);
+    padding: 10px 14px; font-size: 13px; color: var(--teal-dark);
+    margin-top: 10px; line-height: 1.5; display: none;
+  }
+  .result-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; margin: 0 auto 1rem;
+  }
+  .score-big { font-size: 48px; font-weight: 800; color: var(--teal-dark); text-align: center; }
+  .score-label { font-size: 14px; color: var(--gray-400); text-align: center; margin-top: 4px; }
+  .badge {
+    display: inline-block; padding: 4px 12px; border-radius: 100px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge-teal { background: var(--teal-light); color: var(--teal-dark); }
+  .badge-amber { background: var(--amber-light); color: var(--amber-dark); }
+  .badge-coral { background: var(--coral-light); color: var(--coral-dark); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block; margin-right: 6px;
+  }
+  .dot-green { background: var(--teal); }
+  .dot-amber { background: var(--amber); animation: pulse 1.2s infinite; }
+  .dot-gray { background: var(--gray-400); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .waiting-anim {
+    display: flex; gap: 6px; justify-content: center; margin: 1.5rem 0;
+  }
+  .waiting-anim span {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--teal); animation: bounce 0.9s infinite;
+  }
+  .waiting-anim span:nth-child(2) { animation-delay: 0.15s; }
+  .waiting-anim span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .result-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px;
+  }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--gray-200); border-top-color: var(--teal);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    display: inline-block; margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box {
+    background: var(--coral-light); color: var(--coral-dark);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    font-size: 13px; margin-top: 10px; display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header" id="app-header" style="display:none">
+  <div>
+    <div class="header-title" id="header-title">Mass Transfer Quiz</div>
+    <div class="header-sub" id="header-sub">Chemical Engineering — Level 3</div>
+  </div>
+  <div class="timer-circle" id="timer-circle" style="display:none">—</div>
+</div>
+
+<!-- SCREEN: JOIN -->
+<div class="screen active" id="screen-join">
+  <div class="card">
+    <div style="text-align:center; margin-bottom:1.5rem">
+      <div style="font-size:40px; margin-bottom:8px">📐</div>
+      <h2>Mass Transfer Quiz</h2>
+      <p style="margin-top:6px">Chemical Engineering — Level 3, Term 1</p>
+    </div>
+    <div id="join-status" style="text-align:center; padding:10px; font-size:13px; color:var(--gray-400); margin-bottom:6px">
+      <span class="spinner"></span>Checking for active session...
+    </div>
+    <label>Your Name</label>
+    <input type="text" id="student-name" placeholder="e.g. Rahim Ahmed" maxlength="50" autocomplete="off">
+    <label>Your Student ID</label>
+    <input type="text" id="student-id" placeholder="e.g. 2101045" maxlength="20" autocomplete="off">
+    <div id="join-error" class="error-box">Please enter both your name and Student ID.</div>
+    <button class="btn btn-primary" id="join-btn" onclick="joinQuiz()" disabled>Join quiz</button>
+  </div>
+</div>
+
+<!-- SCREEN: WAITING -->
+<div class="screen" id="screen-waiting">
+  <div class="card" style="text-align:center">
+    <div class="waiting-anim"><span></span><span></span><span></span></div>
+    <h2 id="wait-title">Waiting for teacher...</h2>
+    <p id="wait-sub" style="margin-top:8px">The quiz will start automatically when your teacher opens the first question.</p>
+    <div style="margin-top:1.25rem; padding:10px 14px; background:var(--gray-100); border-radius:var(--radius-sm); font-size:13px; color:var(--gray-600)">
+      Joined as <strong id="wait-name"></strong>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: QUESTION -->
+<div class="screen" id="screen-question">
+  <div class="progress-bar"><div class="progress-fill" id="q-progress"></div></div>
+  <div class="card">
+    <div class="q-number" id="q-number">Question 1</div>
+    <div class="q-text" id="q-text">Loading...</div>
+    <div id="opts-container"></div>
+    <div class="explain-box" id="explain-box"></div>
+  </div>
+</div>
+
+<!-- SCREEN: RESULTS -->
+<div class="screen" id="screen-results">
+  <div class="card" style="text-align:center">
+    <div class="result-icon" id="result-icon" style="background:var(--teal-light)">🎉</div>
+    <div class="score-big" id="score-big">—</div>
+    <div class="score-label" id="score-label">out of — questions correct</div>
+    <div style="margin-top:1rem" id="score-badge-wrap"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:14px; font-weight:600; color:var(--gray-800); margin-bottom:10px">Your answers</div>
+    <div id="answer-review"></div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, get, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCkbUXXPbAmXVMUI6gLrnG36gSqUpOK29Y",
+  authDomain: "mt1-quiz-buet.firebaseapp.com",
+  databaseURL: "https://mt1-quiz-buet-default-rtdb.firebaseio.com",
+  projectId: "mt1-quiz-buet",
+  storageBucket: "mt1-quiz-buet.firebasestorage.app",
+  messagingSenderId: "1012871794530",
+  appId: "1:1012871794530:web:0d96965710c1a9f1b4e63b"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let studentId = '';
+let studentName = '';
+let currentQIndex = -1;
+let myAnswers = [];
+let sessionKey = '';
+let questions = [];
+let timerInt = null;
+let timeLeft = 0;
+let answered = false;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// Check for active session
+const sessionRef = ref(db, 'session');
+onValue(sessionRef, snap => {
+  const session = snap.val();
+  const btn = document.getElementById('join-btn');
+  const statusEl = document.getElementById('join-status');
+
+  if (!session || session.status === 'closed') {
+    statusEl.innerHTML = '<span class="status-dot dot-gray"></span>No active session right now';
+    btn.disabled = true;
+  } else {
+    statusEl.innerHTML = '<span class="status-dot dot-green"></span>Session active: ' + (session.topic || 'Mass Transfer Quiz');
+    btn.disabled = false;
+    sessionKey = session.key || '';
+    questions = session.questions || [];
+    document.getElementById('header-title').textContent = session.topic || 'Mass Transfer Quiz';
+  }
+});
+
+window.joinQuiz = function() {
+  const sid = document.getElementById('student-id').value.trim();
+  const sname = document.getElementById('student-name').value.trim();
+  if (!sid || !sname) {
+    document.getElementById('join-error').style.display = 'block';
+    return;
+  }
+  document.getElementById('join-error').style.display = 'none';
+  studentId = sid;
+  studentName = sname;
+  const displayLabel = sname + ' (' + sid + ')';
+  document.getElementById('wait-name').textContent = displayLabel;
+  document.getElementById('app-header').style.display = 'flex';
+
+  // Register student presence
+  set(ref(db, 'connected/' + sid), { name: sname, joinedAt: Date.now() });
+
+  show('waiting');
+
+  // Watch session state for question changes
+  onValue(sessionRef, snap => {
+    const session = snap.val();
+    if (!session) return;
+    questions = session.questions || [];
+    const qIdx = session.currentQuestion;
+    const status = session.status;
+
+    if (status === 'question' && typeof qIdx === 'number' && qIdx !== currentQIndex) {
+      currentQIndex = qIdx;
+      answered = false;
+      showQuestion(qIdx, session.timePerQ || 60);
+    }
+    if (status === 'waiting') {
+      document.getElementById('wait-title').textContent = 'Next question coming...';
+      show('waiting');
+    }
+    if (status === 'closed' || status === 'finished') {
+      clearInterval(timerInt);
+      showResults();
+    }
+  });
+};
+
+function showQuestion(idx, timeLimit) {
+  const q = questions[idx];
+  if (!q) return;
+  show('question');
+  document.getElementById('q-number').textContent = 'Question ' + (idx + 1) + ' of ' + questions.length;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('q-progress').style.width = ((idx + 1) / questions.length * 100) + '%';
+  document.getElementById('explain-box').style.display = 'none';
+
+  const cont = document.getElementById('opts-container');
+  cont.innerHTML = q.opts.map((o, i) => `
+    <button class="opt" id="opt-${i}" onclick="selectOpt(${i})">
+      <span class="opt-letter">${String.fromCharCode(65 + i)}</span>
+      <span>${o}</span>
+    </button>
+  `).join('');
+
+  // Timer
+  clearInterval(timerInt);
+  const circle = document.getElementById('timer-circle');
+  circle.style.display = 'flex';
+  timeLeft = timeLimit;
+  circle.textContent = timeLeft;
+  circle.className = 'timer-circle';
+  if (timeLimit > 0) {
+    timerInt = setInterval(() => {
+      timeLeft--;
+      circle.textContent = timeLeft;
+      if (timeLeft <= 10) circle.className = 'timer-circle warn';
+      if (timeLeft <= 0) {
+        clearInterval(timerInt);
+        if (!answered) timeUp();
+      }
+    }, 1000);
+  } else {
+    circle.textContent = '∞';
+  }
+}
+
+window.selectOpt = function(i) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInt);
+  const q = questions[currentQIndex];
+  const correct = i === q.ans;
+
+  document.querySelectorAll('.opt').forEach((b, j) => {
+    b.disabled = true;
+    if (j === i) b.classList.add(correct ? 'correct' : 'wrong');
+    if (j === q.ans && !correct) b.classList.add('reveal-correct');
+  });
+
+  if (q.explain) {
+    document.getElementById('explain-box').textContent = '💡 ' + q.explain;
+    document.getElementById('explain-box').style.display = 'block';
+  }
+
+  myAnswers[currentQIndex] = { sel: i, correct };
+
+  // Save to Firebase — keyed by studentId/questionIndex
+  set(ref(db, 'answers/' + studentId + '/' + currentQIndex), {
+    sel: i, correct, time: Date.now(), name: studentName
+  });
+};
+
+function timeUp() {
+  answered = true;
+  const q = questions[currentQIndex];
+  document.querySelectorAll('.opt').forEach((b, j) => {
+    b.disabled = true;
+    if (j === q.ans) b.classList.add('reveal-correct');
+  });
+  myAnswers[currentQIndex] = { sel: -1, correct: false };
+  set(ref(db, 'answers/' + studentId + '/' + currentQIndex), {
+    sel: -1, correct: false, time: Date.now(), name: studentName
+  });
+}
+
+function showResults() {
+  show('results');
+  document.getElementById('app-header').style.display = 'none';
+  const correct = myAnswers.filter(a => a && a.correct).length;
+  const total = questions.length;
+  const pct = total ? Math.round(correct / total * 100) : 0;
+
+  document.getElementById('score-big').textContent = pct + '%';
+  document.getElementById('score-label').textContent = correct + ' out of ' + total + ' questions correct';
+
+  let badge = '', icon = '';
+  if (pct >= 80) { badge = '<span class="badge badge-teal">Excellent!</span>'; icon = '🎉'; }
+  else if (pct >= 60) { badge = '<span class="badge badge-amber">Good effort</span>'; icon = '👍'; }
+  else { badge = '<span class="badge" style="background:#FAECE7;color:#993C1D">Keep studying</span>'; icon = '📖'; }
+
+  document.getElementById('result-icon').textContent = icon;
+  document.getElementById('score-badge-wrap').innerHTML = badge;
+
+  const rev = document.getElementById('answer-review');
+  rev.innerHTML = questions.map((q, i) => {
+    const a = myAnswers[i];
+    const status = !a || a.sel === -1 ? '⏱ No answer' : a.correct ? '✓ Correct' : '✗ Wrong';
+    const color = !a || a.sel === -1 ? 'var(--gray-400)' : a.correct ? 'var(--teal-dark)' : 'var(--coral-dark)';
+    return `<div class="result-row">
+      <span style="font-size:13px;color:var(--gray-600);flex:1">Q${i+1}. ${q.q.slice(0,60)}${q.q.length>60?'...':''}</span>
+      <span style="font-size:13px;font-weight:600;color:${color};margin-left:8px;white-space:nowrap">${status}</span>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
