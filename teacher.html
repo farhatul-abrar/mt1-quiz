@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Dashboard — Mass Transfer</title>
+<style>
+  :root {
+    --teal:#1D9E75; --teal-dark:#085041; --teal-light:#E1F5EE;
+    --amber:#BA7517; --amber-light:#FAEEDA; --amber-dark:#633806;
+    --coral:#D85A30; --coral-light:#FAECE7; --coral-dark:#993C1D;
+    --blue:#378ADD; --blue-light:#E6F1FB; --blue-dark:#0C447C;
+    --purple:#7F77DD; --purple-light:#EEEDFE; --purple-dark:#3C3489;
+    --bg:#F0F4F8; --white:#fff;
+    --gray-50:#F8F9FA; --gray-100:#F1F3F5; --gray-200:#E9ECEF;
+    --gray-300:#CED4DA; --gray-400:#868E96; --gray-600:#495057; --gray-800:#212529;
+    --radius:12px; --radius-sm:8px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); min-height:100vh; }
+
+  /* ── LOGIN OVERLAY ── */
+  #login-overlay {
+    position:fixed; inset:0; background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999;
+  }
+  .login-card {
+    background:white; border-radius:var(--radius); padding:2rem;
+    width:100%; max-width:340px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.10);
+    text-align:center;
+  }
+  .login-card h2 { font-size:20px; font-weight:700; color:var(--gray-800); margin-bottom:6px; }
+  .login-card p { font-size:13px; color:var(--gray-400); margin-bottom:1.5rem; }
+  .login-card input {
+    width:100%; padding:11px 14px; font-size:15px; letter-spacing:0.1em;
+    border:1.5px solid var(--gray-200); border-radius:var(--radius-sm);
+    background:var(--gray-50); outline:none; margin-bottom:10px;
+    text-align:center;
+  }
+  .login-card input:focus { border-color:var(--teal); background:white; }
+  .login-card button {
+    width:100%; padding:12px; font-size:14px; font-weight:600;
+    background:var(--teal); color:white; border:none;
+    border-radius:var(--radius-sm); cursor:pointer;
+  }
+  .login-card button:hover { background:var(--teal-dark); }
+  .login-error {
+    font-size:12px; color:var(--coral-dark);
+    background:var(--coral-light); border-radius:6px;
+    padding:7px 12px; margin-bottom:10px; display:none;
+  }
+
+  .topbar {
+    background:var(--teal-dark); color:white;
+    padding:0.75rem 1.5rem;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+  }
+  .topbar-title { font-size:15px; font-weight:700; }
+  .topbar-sub { font-size:11px; opacity:0.65; margin-top:1px; }
+  .live-dot { width:8px;height:8px;border-radius:50%;background:#4ADE80;display:inline-block;margin-right:6px;animation:pulse 1.2s infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  .main { display:grid; grid-template-columns:320px 1fr; gap:1rem; padding:1rem; max-width:1200px; margin:0 auto; }
+  @media(max-width:820px){ .main{grid-template-columns:1fr} }
+  .panel { background:var(--white); border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+  h3 { font-size:14px; font-weight:700; color:var(--gray-800); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  label { font-size:12px; font-weight:600; color:var(--gray-600); display:block; margin-bottom:4px; margin-top:10px; }
+  input[type=text],input[type=number],select,textarea {
+    width:100%; padding:8px 10px; font-size:13px;
+    border:1.5px solid var(--gray-200); border-radius:var(--radius-sm);
+    background:var(--gray-50); color:var(--gray-800); outline:none;
+  }
+  input:focus,select:focus,textarea:focus { border-color:var(--teal); background:white; }
+  textarea { resize:vertical; min-height:70px; line-height:1.5; }
+  .btn {
+    padding:8px 16px; font-size:13px; font-weight:600;
+    border-radius:var(--radius-sm); border:none; cursor:pointer;
+    transition:all 0.15s; display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-primary { background:var(--teal); color:white; }
+  .btn-primary:hover { background:var(--teal-dark); }
+  .btn-primary:disabled { background:var(--gray-400); cursor:not-allowed; }
+  .btn-blue { background:var(--blue); color:white; }
+  .btn-blue:hover { background:var(--blue-dark); }
+  .btn-blue:disabled { background:var(--gray-400); cursor:not-allowed; }
+  .btn-danger { background:var(--coral-light); color:var(--coral-dark); }
+  .btn-danger:hover { background:#F0997B; color:white; }
+  .btn-gray { background:var(--gray-100); color:var(--gray-600); }
+  .btn-gray:hover { background:var(--gray-200); }
+  .btn-sm { padding:5px 10px; font-size:12px; }
+  .btn-block { width:100%; justify-content:center; }
+  .mode-tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .mode-tab {
+    flex:1; padding:8px; font-size:12px; font-weight:600;
+    border-radius:var(--radius-sm); border:1.5px solid var(--gray-200);
+    background:var(--gray-100); color:var(--gray-600); cursor:pointer;
+    text-align:center; transition:all 0.15s;
+  }
+  .mode-tab.active { background:var(--teal-light); border-color:var(--teal); color:var(--teal-dark); }
+  .section { display:none; } .section.active { display:block; }
+  .correct-row { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+  .dot { width:14px;height:14px;border-radius:50%;border:2.5px solid var(--gray-400);cursor:pointer;flex-shrink:0;transition:all 0.15s;background:white; }
+  .dot:hover { border-color:var(--teal);background:var(--teal-light); }
+  .dot.active { background:var(--teal);border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-light); }
+  .q-item {
+    border:1px solid var(--gray-200); border-radius:var(--radius-sm);
+    padding:10px 12px; margin-bottom:8px; position:relative;
+    border-left:3px solid var(--gray-300);
+  }
+  .q-item.manual { border-left-color:var(--teal); }
+  .q-item.ai { border-left-color:var(--blue); }
+  .q-title { font-size:13px; font-weight:600; color:var(--gray-800); margin-bottom:4px; }
+  .q-meta { font-size:11px; color:var(--gray-400); }
+  .badge { display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600; }
+  .bt{background:var(--teal-light);color:var(--teal-dark)}
+  .bb{background:var(--blue-light);color:var(--blue-dark)}
+  .ba{background:var(--amber-light);color:var(--amber-dark)}
+  .bc{background:var(--coral-light);color:var(--coral-dark)}
+  .bpurp{background:var(--purple-light);color:var(--purple-dark)}
+  .session-controls { display:flex; flex-direction:column; gap:8px; }
+  .ctrl-row { display:flex; gap:8px; }
+  .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .stat { background:var(--gray-50); border-radius:var(--radius-sm); padding:10px; text-align:center; }
+  .stat-val { font-size:22px; font-weight:800; color:var(--gray-800); }
+  .stat-label { font-size:11px; color:var(--gray-400); margin-top:2px; }
+  .live-row {
+    display:flex; align-items:center; gap:10px; padding:8px 0;
+    border-bottom:1px solid var(--gray-100); font-size:13px;
+  }
+  .bar-wrap { flex:1; height:7px; background:var(--gray-200); border-radius:4px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; }
+  .q-nav-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .q-nav-btn {
+    width:32px;height:32px;border-radius:50%;border:1.5px solid var(--gray-200);
+    background:var(--gray-100);font-size:12px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:var(--gray-600);
+  }
+  .q-nav-btn.active { background:var(--teal);border-color:var(--teal);color:white; }
+  .q-nav-btn.done { background:var(--teal-light);border-color:var(--teal);color:var(--teal-dark); }
+  .spinner { width:16px;height:16px;border:2px solid var(--gray-200);border-top-color:var(--teal);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .notice {
+    background:var(--blue-light); color:var(--blue-dark);
+    border-radius:var(--radius-sm); padding:10px 12px;
+    font-size:12px; line-height:1.5; margin-bottom:10px;
+  }
+  .status-pill {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:4px 10px; border-radius:100px; font-size:12px; font-weight:600;
+  }
+  .sp-green { background:var(--teal-light);color:var(--teal-dark); }
+  .sp-amber { background:var(--amber-light);color:var(--amber-dark); }
+  .sp-gray { background:var(--gray-100);color:var(--gray-600); }
+  .q-disp-box { background:var(--gray-50); border-radius:var(--radius-sm); padding:12px; margin-bottom:10px; }
+  .q-disp-text { font-size:14px; font-weight:600; color:var(--gray-800); margin-bottom:8px; }
+  .opt-mini { font-size:13px; padding:5px 8px; border-radius:6px; margin-bottom:4px; color:var(--gray-600); background:white; border:1px solid var(--gray-200); }
+  .opt-mini.correct { background:var(--teal-light); color:var(--teal-dark); border-color:var(--teal); font-weight:600; }
+  .lb-row { display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--gray-100); }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--gray-200); margin-bottom:1rem; }
+  .tab { padding:7px 14px;font-size:13px;font-weight:600;color:var(--gray-400);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px; }
+  .tab.active { color:var(--teal-dark);border-bottom-color:var(--teal); }
+  .tabpanel { display:none; } .tabpanel.active { display:block; }
+  #qbank-empty { text-align:center;padding:2rem;color:var(--gray-400);font-size:13px;border:1.5px dashed var(--gray-200);border-radius:var(--radius-sm); }
+  .export-row { display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gray-50);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;border:1px solid var(--gray-200); }
+  .export-row:hover { border-color:var(--teal);background:var(--teal-light); }
+  .export-icon { font-size:20px; }
+  .export-title { font-size:13px;font-weight:600;color:var(--gray-800); }
+  .export-sub { font-size:11px;color:var(--gray-400); }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN OVERLAY ── -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div style="font-size:36px;margin-bottom:10px">🔒</div>
+    <h2>Teacher Access</h2>
+    <p>Mass Transfer — BUET</p>
+    <div class="login-error" id="login-error">Incorrect password. Try again.</div>
+    <input type="password" id="login-pw" placeholder="Enter teacher password" onkeydown="if(event.key==='Enter')checkLogin()">
+    <input type="text" id="login-apikey" placeholder="Groq API key (for AI features)" style="margin-top:6px;letter-spacing:0;text-align:left;" onkeydown="if(event.key==='Enter')checkLogin()">
+    <div style="font-size:11px;color:var(--gray-400);text-align:left;margin-bottom:10px;margin-top:4px">Free from console.groq.com — stored in memory only.</div>
+    <button onclick="checkLogin()">Enter Dashboard</button>
+  </div>
+</div>
+
+<div id="app-body" style="display:none">
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">Mass Transfer — Teacher Dashboard</div>
+    <div class="topbar-sub">Chemical Engineering, Level 3, Term 1</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="session-status-pill" class="status-pill sp-gray">● No session</span>
+    <span id="student-count" style="font-size:13px;color:rgba(255,255,255,0.8)">0 students</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- LEFT COLUMN -->
+  <div>
+    <!-- Question Builder -->
+    <div class="panel">
+      <h3>📝 Question builder</h3>
+      <div class="mode-tabs">
+        <div class="mode-tab active" id="mt-manual" onclick="setMode('manual')">Manual</div>
+        <div class="mode-tab" id="mt-topic" onclick="setMode('topic')">AI — topic</div>
+        <div class="mode-tab" id="mt-content" onclick="setMode('content')">AI — content</div>
+      </div>
+
+      <!-- Manual -->
+      <div class="section active" id="sec-manual">
+        <label>Question</label>
+        <textarea id="m-q" placeholder="e.g., Fick's first law relates molar flux to..."></textarea>
+        <div id="m-opts">
+          <div class="correct-row"><div class="dot" id="d0" onclick="setCorrect(0)"></div><input type="text" class="m-opt" placeholder="Option A" style="flex:1"></div>
+          <div class="correct-row"><div class="dot" id="d1" onclick="setCorrect(1)"></div><input type="text" class="m-opt" placeholder="Option B" style="flex:1"></div>
+          <div class="correct-row"><div class="dot" id="d2" onclick="setCorrect(2)"></div><input type="text" class="m-opt" placeholder="Option C" style="flex:1"></div>
+          <div class="correct-row"><div class="dot" id="d3" onclick="setCorrect(3)"></div><input type="text" class="m-opt" placeholder="Option D" style="flex:1"></div>
+        </div>
+        <div style="font-size:11px;color:var(--gray-400);margin:4px 0 6px">Click the dot to mark the correct answer</div>
+        <label>Explanation (optional)</label>
+        <input type="text" id="m-exp" placeholder="Brief explanation">
+        <label>Topic</label>
+        <select id="m-topic">
+          <option>Molecular Diffusion (Fick's Law)</option>
+          <option>Diffusivity in Gases & Liquids</option>
+          <option>Convective Mass Transfer</option>
+          <option>Mass Transfer Coefficients</option>
+          <option>Film & Penetration Theory</option>
+          <option>Interphase Mass Transfer</option>
+          <option>Absorption & Stripping</option>
+          <option>Distillation</option>
+          <option>Extraction & Leaching</option>
+          <option>Drying</option>
+        </select>
+        <button class="btn btn-primary btn-block" style="margin-top:10px" onclick="addManual()">+ Add to bank</button>
+      </div>
+
+      <!-- AI Topic -->
+      <div class="section" id="sec-topic">
+        <label>Topic</label>
+        <select id="ai-topic">
+          <option>Molecular Diffusion (Fick's Law)</option>
+          <option>Diffusivity in Gases & Liquids</option>
+          <option>Convective Mass Transfer</option>
+          <option>Mass Transfer Coefficients</option>
+          <option>Film & Penetration Theory</option>
+          <option>Interphase Mass Transfer</option>
+          <option>Absorption & Stripping</option>
+          <option>Distillation</option>
+          <option>Extraction & Leaching</option>
+          <option>Drying</option>
+        </select>
+        <label>Difficulty</label>
+        <select id="ai-diff">
+          <option value="conceptual">Conceptual</option>
+          <option value="applied" selected>Applied / problem-solving</option>
+          <option value="mixed">Mixed</option>
+        </select>
+        <label>Count</label>
+        <select id="ai-n"><option>3</option><option selected>5</option><option>8</option><option>10</option></select>
+        <button class="btn btn-blue btn-block" style="margin-top:10px" id="gen-topic-btn" onclick="genTopic()">
+          <span id="gen-topic-lbl">✨ Generate</span>
+        </button>
+      </div>
+
+      <!-- AI Content -->
+      <div class="section" id="sec-content">
+        <div class="notice">Paste text, upload a file (PDF/TXT), or give a URL. AI will generate questions from your exact content.</div>
+
+        <!-- Input type tabs -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="btn btn-sm" id="ct-text-btn" onclick="setContentTab('text')" style="background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal)">📝 Paste text</button>
+          <button class="btn btn-sm" id="ct-file-btn" onclick="setContentTab('file')" style="background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200)">📎 Upload file</button>
+          <button class="btn btn-sm" id="ct-url-btn" onclick="setContentTab('url')" style="background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200)">🔗 URL</button>
+        </div>
+
+        <!-- Paste text -->
+        <div id="ct-text" style="display:block">
+          <label>Your content</label>
+          <textarea id="ai-text" style="min-height:100px" placeholder="Paste lecture notes, equations, or slide text here..."></textarea>
+        </div>
+
+        <!-- File upload -->
+        <div id="ct-file" style="display:none">
+          <label>Upload file (PDF or TXT)</label>
+          <div id="drop-zone" style="border:2px dashed var(--gray-300);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;background:var(--gray-50);transition:all 0.15s" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--teal)'" ondragleave="this.style.borderColor='var(--gray-300)'" ondrop="handleFileDrop(event)">
+            <div style="font-size:24px;margin-bottom:6px">📄</div>
+            <div style="font-size:13px;color:var(--gray-600);font-weight:600">Click or drag & drop</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:2px">PDF or plain text (.txt, .md)</div>
+          </div>
+          <input type="file" id="file-input" accept=".pdf,.txt,.md,.tex" style="display:none" onchange="handleFileSelect(event)">
+          <div id="file-status" style="font-size:12px;color:var(--teal-dark);margin-top:6px;display:none"></div>
+        </div>
+
+        <!-- URL -->
+        <div id="ct-url" style="display:none">
+          <label>Resource URL</label>
+          <input type="text" id="ai-url" placeholder="https://... (article, Wikipedia, course page)">
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">AI will fetch and read the page content.</div>
+          <div id="url-status" style="font-size:12px;color:var(--teal-dark);margin-top:4px;display:none"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div>
+            <label>Count</label>
+            <select id="ai-cn"><option>3</option><option selected>5</option><option>8</option></select>
+          </div>
+          <div>
+            <label>Focus</label>
+            <select id="ai-focus">
+              <option value="key concepts">Key concepts</option>
+              <option value="equations">Equations</option>
+              <option value="applications">Applications</option>
+              <option value="all aspects" selected>All aspects</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-blue btn-block" style="margin-top:10px" id="gen-cont-btn" onclick="genContent()">
+          <span id="gen-cont-lbl">✨ Generate from content</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Session Settings -->
+    <div class="panel">
+      <h3>⚙️ Session settings</h3>
+      <label>Session topic / title</label>
+      <input type="text" id="sess-topic" placeholder="e.g., Fick's Laws & Diffusivity">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <label>Default time / question (s)</label>
+          <select id="sess-time"><option value="30">30s</option><option value="60" selected>60s</option><option value="90">90s</option><option value="120">120s</option><option value="0">No limit</option></select>
+        </div>
+        <div>
+          <label>Questions to use</label>
+          <select id="sess-qcount"><option value="all">All in bank</option><option>5</option><option>10</option><option>15</option></select>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--gray-50);border-radius:var(--radius-sm);border:1px solid var(--gray-200)">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:6px">Anti-cheating options</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:0">
+          <input type="checkbox" id="opt-hide-answers" checked style="width:auto;accent-color:var(--teal)">
+          <span style="font-size:12px;color:var(--gray-700)">Hide correct answers after submission (score only)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
+          <input type="checkbox" id="opt-shuffle-q" checked style="width:auto;accent-color:var(--teal)">
+          <span style="font-size:12px;color:var(--gray-700)">Shuffle question order per student</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:6px">
+          <input type="checkbox" id="opt-shuffle-opts" checked style="width:auto;accent-color:var(--teal)">
+          <span style="font-size:12px;color:var(--gray-700)">Shuffle option order per student</span>
+        </label>
+      </div>
+      <div class="session-controls" style="margin-top:14px">
+        <button class="btn btn-primary btn-block" id="open-btn" onclick="openSession()">▶ Open session for students</button>
+        <button class="btn btn-danger btn-block" id="close-btn" onclick="closeSession()" disabled>■ End session</button>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="panel">
+      <h3>📥 Export</h3>
+      <div class="export-row" onclick="exportCSV('scores')">
+        <span class="export-icon">📊</span>
+        <div><div class="export-title">All scores (CSV)</div><div class="export-sub">Student × session matrix</div></div>
+      </div>
+      <div class="export-row" onclick="exportCSV('ca')">
+        <span class="export-icon">🎓</span>
+        <div><div class="export-title">CA grade sheet (CSV)</div><div class="export-sub">Weighted marks for submission</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <label style="margin:0;white-space:nowrap;font-size:12px">Quiz weight in CA (%)</label>
+        <input type="number" id="ca-weight" value="10" min="1" max="50" style="width:70px">
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div>
+    <div class="panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('bank')">Question bank <span id="bank-badge" class="badge bt" style="margin-left:4px">0</span></div>
+        <div class="tab" onclick="switchTab('live')">Live session</div>
+        <div class="tab" onclick="switchTab('history')">Score history</div>
+      </div>
+
+      <!-- BANK TAB -->
+      <div class="tabpanel active" id="tab-bank">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;color:var(--gray-600)" id="bank-summary">0 questions</div>
+          <button class="btn btn-gray btn-sm" onclick="clearBank()">Clear all</button>
+        </div>
+        <div id="qbank-list">
+          <div id="qbank-empty">No questions yet. Add manually or generate with AI.</div>
+        </div>
+      </div>
+
+      <!-- LIVE TAB -->
+      <div class="tabpanel" id="tab-live">
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-val" id="live-students">0</div><div class="stat-label">Connected</div></div>
+          <div class="stat"><div class="stat-val" id="live-answered">0</div><div class="stat-label">Answered</div></div>
+          <div class="stat"><div class="stat-val" id="live-correct-pct">—</div><div class="stat-label">Correct %</div></div>
+        </div>
+
+        <div id="current-q-display" style="display:none">
+          <div class="q-disp-box">
+            <div class="q-disp-text" id="disp-q-text">—</div>
+            <div id="disp-opts"></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">Live responses</div>
+          <div id="live-results-list"></div>
+        </div>
+        <div id="live-empty" style="text-align:center;padding:2rem;color:var(--gray-400);font-size:13px">
+          Open a session to see live results
+        </div>
+      </div>
+
+      <!-- HISTORY TAB -->
+      <div class="tabpanel" id="tab-history">
+        <div id="history-content">
+          <div style="text-align:center;padding:2rem;color:var(--gray-400);font-size:13px">Loading history...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end #app-body -->
+
+<script>
+  // ── CHANGE THIS PASSWORD ──────────────────
+  const TEACHER_PASSWORD = 'buet2025mt';
+  // ─────────────────────────────────────────
+
+  let ANTHROPIC_API_KEY = '';
+  window._getApiKey = () => ANTHROPIC_API_KEY;
+
+  function checkLogin() {
+    const pw = document.getElementById('login-pw').value;
+    if (pw === TEACHER_PASSWORD) {
+      ANTHROPIC_API_KEY = document.getElementById('login-apikey').value.trim();
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('app-body').style.display = 'block';
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('login-pw').value = '';
+      document.getElementById('login-pw').focus();
+    }
+  }
+</script>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCkbUXXPbAmXVMUI6gLrnG36gSqUpOK29Y",
+  authDomain: "mt1-quiz-buet.firebaseapp.com",
+  databaseURL: "https://mt1-quiz-buet-default-rtdb.firebaseio.com",
+  projectId: "mt1-quiz-buet",
+  storageBucket: "mt1-quiz-buet.firebasestorage.app",
+  messagingSenderId: "1012871794530",
+  appId: "1:1012871794530:web:0d96965710c1a9f1b4e63b"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ── local state (bank stays in localStorage for speed) ──
+let bank = JSON.parse(localStorage.getItem('mt_bank') || '[]');
+let sessions = []; // loaded from Firebase
+let correctIdx = -1;
+let sessionActive = false;
+let currentQ = -1;
+let quizQueue = [];
+let liveAnswers = {};
+let connectedStudents = {};
+
+// ── Load session history from Firebase on start ──
+onValue(ref(db, 'sessions'), snap => {
+  const data = snap.val();
+  if (data) {
+    sessions = Object.values(data).sort((a, b) => b.id - a.id);
+  } else {
+    sessions = [];
+  }
+  // re-render history tab if open
+  const histTab = document.getElementById('tab-history');
+  if (histTab && histTab.classList.contains('active')) renderHistory();
+});
+
+renderBank();
+
+// ── watch Firebase live ──
+onValue(ref(db, 'answers'), snap => {
+  liveAnswers = snap.val() || {};
+  renderLive();
+  updateStatusBar();
+});
+onValue(ref(db, 'connected'), snap => {
+  connectedStudents = snap.val() || {};
+  updateStatusBar();
+});
+
+function updateStatusBar() {
+  const students = Object.keys(connectedStudents).length || Object.keys(liveAnswers).length;
+  document.getElementById('student-count').textContent = students + ' student' + (students !== 1 ? 's' : '');
+  document.getElementById('live-students').textContent = students;
+  if (currentQ >= 0) {
+    const answers = Object.values(liveAnswers).map(a => a[currentQ]).filter(Boolean);
+    document.getElementById('live-answered').textContent = answers.length;
+    const correct = answers.filter(a => a.correct).length;
+    document.getElementById('live-correct-pct').textContent = answers.length ? Math.round(correct / answers.length * 100) + '%' : '—';
+  }
+}
+
+// ── mode switching ──
+window.setMode = function(m) {
+  ['manual','topic','content'].forEach(x => {
+    document.getElementById('mt-' + x).classList.toggle('active', x === m);
+    document.getElementById('sec-' + x).classList.toggle('active', x === m);
+  });
+};
+
+// ── correct answer dot ──
+window.setCorrect = function(i) {
+  correctIdx = i;
+  for(let j=0;j<4;j++) document.getElementById('d'+j).classList.toggle('active', j===i);
+};
+
+// ── manual add ──
+window.addManual = function() {
+  const q = document.getElementById('m-q').value.trim();
+  const opts = Array.from(document.querySelectorAll('.m-opt')).map(i=>i.value.trim());
+  if(!q || opts.some(o=>!o)) { alert('Fill in question and all 4 options.'); return; }
+  if(correctIdx<0) { alert('Click a dot to mark the correct answer.'); return; }
+  bank.push({ q, opts, ans:correctIdx, explain:document.getElementById('m-exp').value.trim(), topic:document.getElementById('m-topic').value, source:'manual', id:Date.now()+Math.random() });
+  saveBank();
+  document.getElementById('m-q').value='';
+  document.querySelectorAll('.m-opt').forEach(i=>i.value='');
+  document.getElementById('m-exp').value='';
+  correctIdx=-1;
+  for(let j=0;j<4;j++) document.getElementById('d'+j).classList.remove('active');
+};
+
+// ── AI generate (Groq – Llama 3) ──
+async function callAI(prompt) {
+  const apiKey = window._getApiKey ? window._getApiKey() : '';
+  if (!apiKey) throw new Error('No API key. Re-login and enter your Groq API key.');
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+      max_tokens: 2000,
+      messages: [
+        { role: 'system', content: 'You are a Chemical Engineering professor. Always respond with valid JSON only — no markdown, no explanation, no code fences.' },
+        { role: 'user', content: prompt }
+      ]
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(()=>({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  const clean = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  return JSON.parse(clean);
+}
+
+window.genTopic = async function() {
+  const topic = document.getElementById('ai-topic').value;
+  const diff = document.getElementById('ai-diff').value;
+  const n = document.getElementById('ai-n').value;
+  const btn = document.getElementById('gen-topic-btn');
+  btn.disabled = true;
+  document.getElementById('gen-topic-lbl').innerHTML = '<span class="spinner"></span> Generating...';
+  try {
+    const parsed = await callAI(`Generate exactly ${n} multiple-choice questions for Level-3 Chemical Engineering Mass Transfer on: "${topic}". Difficulty: ${diff}. Return ONLY JSON: {"questions":[{"q":"...","opts":["A","B","C","D"],"ans":0,"explain":"..."}]}. ans=0-based correct index.`);
+    parsed.questions.forEach(q => bank.push({...q, topic, source:'ai', id:Date.now()+Math.random()}));
+    saveBank();
+  } catch(e) { alert('AI error: ' + e.message); }
+  btn.disabled=false;
+  document.getElementById('gen-topic-lbl').textContent='✨ Generate';
+};
+
+// ── content tab switcher ──
+let extractedFileText = '';
+let activeContentTab = 'text';
+
+window.setContentTab = function(tab) {
+  activeContentTab = tab;
+  ['text','file','url'].forEach(t => {
+    document.getElementById('ct-'+t).style.display = t===tab?'block':'none';
+    const btn = document.getElementById('ct-'+t+'-btn');
+    if(t===tab) { btn.style.background='var(--teal-light)'; btn.style.color='var(--teal-dark)'; btn.style.borderColor='var(--teal)'; }
+    else { btn.style.background='var(--gray-100)'; btn.style.color='var(--gray-600)'; btn.style.borderColor='var(--gray-200)'; }
+  });
+};
+
+window.handleFileDrop = function(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.borderColor='var(--gray-300)';
+  const file = e.dataTransfer.files[0];
+  if(file) processFile(file);
+};
+window.handleFileSelect = function(e) {
+  const file = e.target.files[0];
+  if(file) processFile(file);
+};
+
+async function processFile(file) {
+  const status = document.getElementById('file-status');
+  status.style.display='block';
+  status.style.color='var(--gray-600)';
+  status.textContent='⏳ Reading file...';
+  try {
+    if(file.type === 'application/pdf') {
+      const apiKey = window._getApiKey ? window._getApiKey() : '';
+      if(!apiKey) { status.textContent='⚠️ No API key — paste PDF text manually.'; return; }
+      // Groq doesn't support vision/PDF — extract text via pdf.js
+      status.textContent='⏳ Extracting text from PDF...';
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs';
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        let fullText = '';
+        for(let i=1; i<=pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          fullText += content.items.map(s=>s.str).join(' ') + '\n';
+        }
+        extractedFileText = fullText;
+      } catch(pdfErr) {
+        status.style.color='var(--coral-dark)';
+        status.textContent='❌ Could not parse PDF: ' + pdfErr.message + '. Try uploading a .txt file instead.';
+        return;
+      }
+    } else {
+      extractedFileText = await file.text();
+    }
+    status.style.color='var(--teal-dark)';
+    status.textContent=`✅ "${file.name}" loaded — ${extractedFileText.length} characters ready.`;
+    document.getElementById('drop-zone').style.borderColor='var(--teal)';
+  } catch(err) {
+    status.style.color='var(--coral-dark)';
+    status.textContent='❌ Error reading file: '+err.message;
+  }
+}
+
+async function fetchUrlContent(url) {
+  const status = document.getElementById('url-status');
+  status.style.display='block'; status.style.color='var(--gray-600)'; status.textContent='⏳ Fetching URL...';
+  // Use allorigins CORS proxy
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const resp = await fetch(proxy);
+  if(!resp.ok) throw new Error('Could not fetch URL');
+  const data = await resp.json();
+  // Strip HTML tags
+  const text = data.contents.replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+  status.style.color='var(--teal-dark)'; status.textContent=`✅ Page loaded — ${text.length} characters.`;
+  return text;
+}
+
+window.genContent = async function() {
+  const n = document.getElementById('ai-cn').value;
+  const focus = document.getElementById('ai-focus').value;
+  const btn = document.getElementById('gen-cont-btn');
+
+  let content = '';
+  if(activeContentTab === 'text') {
+    content = document.getElementById('ai-text').value.trim();
+    if(!content) { alert('Paste some content first.'); return; }
+  } else if(activeContentTab === 'file') {
+    if(!extractedFileText) { alert('Please upload a file first.'); return; }
+    content = extractedFileText;
+  } else if(activeContentTab === 'url') {
+    const url = document.getElementById('ai-url').value.trim();
+    if(!url) { alert('Enter a URL first.'); return; }
+    try { content = await fetchUrlContent(url); } catch(e) { alert('Could not fetch URL: '+e.message); return; }
+  }
+
+  btn.disabled=true;
+  document.getElementById('gen-cont-lbl').innerHTML='<span class="spinner"></span> Analysing...';
+  try {
+    const parsed = await callAI(`You are a ChE professor. From this content only, generate exactly ${n} MCQ questions focusing on ${focus}.\n\nCONTENT:\n${content.slice(0,6000)}\n\nReturn ONLY valid JSON (no markdown fences): {"questions":[{"q":"...","opts":["A","B","C","D"],"ans":0,"explain":"...","topic":"short topic label"}]}`);
+    parsed.questions.forEach(q => bank.push({...q, source:'ai-content', id:Date.now()+Math.random()}));
+    saveBank();
+  } catch(e) { alert('AI error: '+e.message); }
+  btn.disabled=false;
+  document.getElementById('gen-cont-lbl').textContent='✨ Generate from content';
+};
+
+// ── bank ──
+function saveBank() { localStorage.setItem('mt_bank', JSON.stringify(bank)); renderBank(); }
+window.clearBank = function() { if(confirm('Remove all questions?')) { bank=[]; saveBank(); } };
+window.removeQ = function(i) { bank.splice(i,1); saveBank(); };
+window.setQTime = function(i, val) {
+  const v = parseInt(val);
+  bank[i].timePerQ = isNaN(v) || val==='' ? undefined : v;
+  localStorage.setItem('mt_bank', JSON.stringify(bank));
+};
+
+function renderBank() {
+  const n = bank.length;
+  document.getElementById('bank-badge').textContent = n;
+  document.getElementById('bank-summary').textContent = n + ' question' + (n!==1?'s':'') + ' — ' + bank.filter(q=>q.source==='manual').length + ' manual, ' + bank.filter(q=>q.source!=='manual').length + ' AI';
+  const list = document.getElementById('qbank-list');
+  const empty = document.getElementById('qbank-empty');
+  if(!n) { if(empty) empty.style.display='block'; list.innerHTML=''; return; }
+  if(empty) empty.style.display='none';
+  list.innerHTML = bank.map((q,i) => `
+    <div class="q-item ${q.source==='manual'?'manual':'ai'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="q-title" style="flex:1">Q${i+1}. ${q.q.slice(0,80)}${q.q.length>80?'...':''}</div>
+        <button class="btn btn-gray btn-sm" onclick="removeQ(${i})" style="flex-shrink:0;font-size:11px;padding:3px 8px">✕</button>
+      </div>
+      <div class="q-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="badge ${q.source==='manual'?'bt':'bb'}" style="font-size:10px">${q.source==='manual'?'Manual':'AI'}</span>
+        <span style="color:var(--gray-400)">${q.topic||''}</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray-600)">
+          ⏱
+          <input type="number" min="0" max="300" placeholder="default"
+            value="${q.timePerQ !== undefined ? q.timePerQ : ''}"
+            onchange="setQTime(${i}, this.value)"
+            style="width:64px;padding:3px 6px;font-size:11px;border:1px solid var(--gray-200);border-radius:4px;background:white"
+            title="Time for this question (seconds). Leave blank to use session default.">
+          s
+        </span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── session control ──
+window.openSession = async function() {
+  if(!bank.length) { alert('Add questions to the bank first.'); return; }
+  const topic = document.getElementById('sess-topic').value || 'Mass Transfer Quiz';
+  const defaultTime = parseInt(document.getElementById('sess-time').value) || 60;
+  const countVal = document.getElementById('sess-qcount').value;
+  const hideAnswers = document.getElementById('opt-hide-answers').checked;
+  const shuffleQ = document.getElementById('opt-shuffle-q').checked;
+  const shuffleOpts = document.getElementById('opt-shuffle-opts').checked;
+
+  let pool = [...bank];
+  pool.sort(()=>Math.random()-0.5);
+  if(countVal !== 'all') pool = pool.slice(0, parseInt(countVal));
+
+  // Resolve per-question time (use individual override or fall back to default)
+  const questionsWithTime = pool.map(q => ({
+    ...q,
+    timePerQ: (q.timePerQ !== undefined && q.timePerQ >= 0) ? q.timePerQ : defaultTime
+  }));
+
+  quizQueue = questionsWithTime;
+  liveAnswers = {};
+  await remove(ref(db, 'answers'));
+  await remove(ref(db, 'connected'));
+  await remove(ref(db, 'submissions'));
+  await remove(ref(db, 'devices'));
+
+  await set(ref(db, 'session'), {
+    status: 'active',       // self-paced: goes live immediately
+    topic,
+    questions: questionsWithTime,
+    hideAnswers,            // student page reads this
+    shuffleQ,
+    shuffleOpts,
+    key: Date.now().toString()
+  });
+
+  sessionActive = true;
+  document.getElementById('open-btn').disabled = true;
+  document.getElementById('close-btn').disabled = false;
+  document.getElementById('session-status-pill').className='status-pill sp-green';
+  document.getElementById('session-status-pill').textContent='● Session live';
+  switchTab('live');
+  document.getElementById('live-empty').style.display='none';
+};
+
+window.closeSession = async function() {
+  await set(ref(db, 'session/status'), 'finished');
+  sessionActive = false;
+  document.getElementById('open-btn').disabled = false;
+  document.getElementById('close-btn').disabled = true;
+  document.getElementById('session-status-pill').className='status-pill sp-gray';
+  document.getElementById('session-status-pill').textContent='● No session';
+  await saveSessionToFirebase();
+  renderHistory();
+};
+
+// ── Save session to Firebase (replaces localStorage) ──
+async function saveSessionToFirebase() {
+  const scores = {};
+  const studentNames = {};
+
+  // Collect names from answers
+  Object.entries(liveAnswers).forEach(([sid, data]) => {
+    // Try to find student name from any answer entry
+    const firstEntry = Object.values(data)[0];
+    if (firstEntry && firstEntry.name) studentNames[sid] = firstEntry.name;
+
+    let c = 0;
+    Object.values(data).forEach(a => { if(a.correct) c++; });
+    scores[sid] = Math.round(c / quizQueue.length * 100);
+  });
+
+  const sessionData = {
+    id: Date.now(),
+    date: new Date().toLocaleDateString('en-GB', {year:'numeric', month:'short', day:'numeric'}),
+    topic: document.getElementById('sess-topic').value || 'Mass Transfer Quiz',
+    questions: quizQueue.length,
+    scores,
+    studentNames
+  };
+
+  await push(ref(db, 'sessions'), sessionData);
+}
+
+// ── live display ──
+function renderLive() {
+  if(!quizQueue.length) return;
+  document.getElementById('current-q-display').style.display='block';
+
+  // Show overall stats across all questions
+  const allStudents = Object.keys(liveAnswers);
+  const totalStudents = allStudents.length;
+  let totalAnswered = 0, totalCorrect = 0, totalPossible = 0;
+  allStudents.forEach(sid => {
+    const d = liveAnswers[sid];
+    Object.values(d).forEach(a => {
+      totalAnswered++;
+      if(a.correct) totalCorrect++;
+    });
+    totalPossible += quizQueue.length;
+  });
+
+  document.getElementById('live-answered').textContent = totalAnswered;
+  document.getElementById('live-correct-pct').textContent = totalAnswered ? Math.round(totalCorrect/totalAnswered*100)+'%' : '—';
+
+  // Show per-question breakdown
+  document.getElementById('disp-q-text').textContent = 'Per-question response summary';
+  document.getElementById('disp-opts').innerHTML = '';
+  document.getElementById('live-results-list').innerHTML = quizQueue.map((q, qi) => {
+    const answers = allStudents.map(sid => liveAnswers[sid]?.[qi]).filter(Boolean);
+    const answered = answers.length;
+    const correct = answers.filter(a=>a.correct).length;
+    const pct = answered ? Math.round(correct/answered*100) : 0;
+    const color = pct>=70?'var(--teal)':pct>=40?'var(--amber)':'var(--coral)';
+    return `<div class="live-row">
+      <span style="font-size:12px;font-weight:700;color:var(--gray-600);min-width:28px">Q${qi+1}</span>
+      <span style="font-size:12px;color:var(--gray-600);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.q.slice(0,50)}...</span>
+      <div class="bar-wrap" style="width:80px"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span style="font-size:12px;font-weight:600;color:${color};min-width:36px;text-align:right">${pct}%</span>
+      <span style="font-size:11px;color:var(--gray-400);min-width:32px;text-align:right">${answered}✓</span>
+    </div>`;
+  }).join('');
+}
+
+// ── tabs ──
+window.switchTab = function(id) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['bank','live','history'][i]===id));
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='history') renderHistory();
+};
+
+// ── history (from Firebase) ──
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  if(!sessions.length) {
+    el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--gray-400);font-size:13px">No sessions saved yet.</div>';
+    return;
+  }
+  const cum={};
+  const nameMap={};
+  sessions.forEach(s=>{
+    Object.entries(s.scores).forEach(([sid,pct])=>{
+      if(!cum[sid])cum[sid]=[];
+      cum[sid].push(pct);
+    });
+    if(s.studentNames) Object.entries(s.studentNames).forEach(([sid,name])=>{ nameMap[sid]=name; });
+  });
+  const ranked = Object.entries(cum).map(([sid,arr])=>({
+    sid, name: nameMap[sid]||sid,
+    avg:Math.round(arr.reduce((a,b)=>a+b,0)/arr.length),
+    n:arr.length
+  })).sort((a,b)=>b.avg-a.avg);
+  const caW = parseInt(document.getElementById('ca-weight').value)||10;
+
+  el.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:10px">Leaderboard</div>
+    ${ranked.map((r,i)=>`<div class="lb-row">
+      <span style="width:24px;font-size:13px;font-weight:700;color:var(--gray-400)">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</span>
+      <span style="flex:1;font-size:14px;font-weight:600;color:var(--gray-800)">${r.name}</span>
+      <span style="font-size:11px;color:var(--gray-400);margin-right:4px">${r.sid}</span>
+      <span style="font-size:12px;color:var(--gray-400)">${r.n} session${r.n>1?'s':''}</span>
+      <div class="bar-wrap" style="width:80px;margin:0 8px"><div class="bar-fill" style="width:${r.avg}%;background:${r.avg>=80?'var(--teal)':r.avg>=60?'var(--amber)':'var(--coral)'}"></div></div>
+      <span class="badge ${r.avg>=80?'bt':r.avg>=60?'ba':'bc'}">${r.avg}%</span>
+      <span style="font-size:12px;color:var(--gray-600);min-width:48px;text-align:right">${(r.avg/100*caW).toFixed(1)}/${caW}</span>
+    </div>`).join('')}
+    <div style="margin-top:1rem;font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:8px">Past sessions</div>
+    ${sessions.map(s=>{
+      const vals=Object.values(s.scores);
+      const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+        <span style="flex:1;color:var(--gray-800);font-weight:600">${s.topic}</span>
+        <span style="color:var(--gray-400)">${s.date}</span>
+        <span style="color:var(--gray-400)">${vals.length} students</span>
+        <span class="badge ${avg>=80?'bt':avg>=60?'ba':'bc'}">${avg}% avg</span>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── export ──
+window.exportCSV = function(type) {
+  let rows=[], fn='';
+  if(type==='scores') {
+    fn='mt_scores.csv';
+    rows=[['Student ID','Name','Session','Topic','Date','Score (%)']];
+    sessions.forEach(s=>Object.entries(s.scores).forEach(([sid,pct])=>{
+      const name = (s.studentNames && s.studentNames[sid]) || '';
+      rows.push([sid, name, s.id, s.topic, s.date, pct]);
+    }));
+  } else {
+    const caW=parseInt(document.getElementById('ca-weight').value)||10;
+    fn='mt_CA_grades.csv';
+    const cum={};
+    const nameMap={};
+    sessions.forEach(s=>{
+      Object.entries(s.scores).forEach(([sid,pct])=>{if(!cum[sid])cum[sid]=[];cum[sid].push(pct);});
+      if(s.studentNames) Object.entries(s.studentNames).forEach(([sid,name])=>{ nameMap[sid]=name; });
+    });
+    rows=[['Student ID','Name','Quiz Average (%)','CA Marks (out of '+caW+')']];
+    Object.entries(cum).sort((a,b)=>{const aA=a[1].reduce((x,y)=>x+y,0)/a[1].length;const bA=b[1].reduce((x,y)=>x+y,0)/b[1].length;return bA-aA;})
+      .forEach(([sid,arr])=>{
+        const avg=Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+        rows.push([sid, nameMap[sid]||'', avg, (avg/100*caW).toFixed(1)]);
+      });
+  }
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;a.click();
+};
+</script>
+</body>
+</html>
