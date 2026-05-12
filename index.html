@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mass Transfer Quiz — BUET</title>
+<style>
+  :root {
+    --teal:#1D9E75; --teal-dark:#085041; --teal-light:#E1F5EE;
+    --amber:#BA7517; --amber-light:#FAEEDA; --amber-dark:#633806;
+    --coral:#D85A30; --coral-light:#FAECE7; --coral-dark:#993C1D;
+    --blue:#378ADD; --blue-light:#E6F1FB; --blue-dark:#0C447C;
+    --bg:#F0F4F8; --white:#fff;
+    --gray-50:#F8F9FA; --gray-100:#F1F3F5; --gray-200:#E9ECEF;
+    --gray-300:#CED4DA; --gray-400:#868E96; --gray-600:#495057; --gray-700:#343A40; --gray-800:#212529;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1rem;user-select:none;-webkit-user-select:none;}
+  /* disable right-click */
+  .header{width:100%;max-width:560px;background:var(--teal-dark);color:white;border-radius:var(--radius);padding:.85rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;}
+  .header-title{font-size:15px;font-weight:700;}
+  .header-sub{font-size:11px;opacity:.7;margin-top:2px;}
+  .timer-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .timer-circle{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;border:2px solid rgba(255,255,255,.3);transition:all .3s;}
+  .timer-circle.warn{background:rgba(216,90,48,.75);border-color:rgba(216,90,48,.9);}
+  .timer-circle.danger{background:rgba(200,30,30,.85);border-color:#c00;animation:pulse .5s infinite;}
+  .timer-label{font-size:10px;opacity:.7;}
+  .card{width:100%;max-width:560px;background:white;border-radius:var(--radius);padding:1.5rem;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:1rem;}
+  .screen{display:none;width:100%;max-width:560px;flex-direction:column;align-items:center;}
+  .screen.active{display:flex;}
+  h2{font-size:18px;font-weight:700;color:var(--gray-800);margin-bottom:6px;}
+  p{font-size:14px;color:var(--gray-600);line-height:1.5;}
+  label{font-size:13px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:5px;margin-top:14px;}
+  input[type=text]{width:100%;padding:12px 14px;font-size:15px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);background:var(--gray-50);color:var(--gray-800);outline:none;transition:border .2s;}
+  input[type=text]:focus{border-color:var(--teal);background:white;}
+  .btn{width:100%;padding:13px;font-size:15px;font-weight:600;border-radius:var(--radius-sm);border:none;cursor:pointer;margin-top:14px;transition:all .15s;}
+  .btn-primary{background:var(--teal);color:white;}
+  .btn-primary:hover{background:var(--teal-dark);}
+  .btn-primary:disabled{background:var(--gray-400);cursor:not-allowed;}
+  .btn-blue{background:var(--blue);color:white;}
+  .btn-blue:hover{background:var(--blue-dark);}
+  .btn-blue:disabled{background:var(--gray-400);cursor:not-allowed;}
+
+  /* Question nav grid */
+  .q-nav-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;}
+  .q-nav-dot{width:34px;height:34px;border-radius:50%;border:2px solid var(--gray-200);background:var(--gray-100);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gray-600);transition:all .15s;flex-shrink:0;}
+  .q-nav-dot.current{background:var(--blue);border-color:var(--blue);color:white;transform:scale(1.1);}
+  .q-nav-dot.answered{background:var(--teal-light);border-color:var(--teal);color:var(--teal-dark);}
+  .q-nav-dot.skipped{background:var(--amber-light);border-color:var(--amber);color:var(--amber-dark);}
+
+  /* Options */
+  .opt{width:100%;padding:13px 16px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);background:white;color:var(--gray-700);font-size:14px;font-weight:500;text-align:left;cursor:pointer;margin-bottom:8px;transition:all .15s;display:flex;align-items:center;gap:12px;}
+  .opt:hover:not(:disabled){border-color:var(--teal);background:var(--teal-light);color:var(--teal-dark);}
+  .opt.selected{border-color:var(--blue);background:var(--blue-light);color:var(--blue-dark);}
+  .opt.correct{border-color:var(--teal);background:var(--teal-light);color:var(--teal-dark);}
+  .opt.wrong{border-color:var(--coral);background:var(--coral-light);color:var(--coral-dark);}
+  .opt.reveal-correct{border-color:var(--teal);background:var(--teal-light);color:var(--teal-dark);}
+  .opt:disabled{cursor:not-allowed;opacity:.8;}
+  .opt-letter{width:28px;height:28px;border-radius:50%;background:var(--gray-100);color:var(--gray-600);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .opt.selected .opt-letter{background:var(--blue);color:white;}
+  .opt.correct .opt-letter,.opt.reveal-correct .opt-letter{background:var(--teal);color:white;}
+  .opt.wrong .opt-letter{background:var(--coral);color:white;}
+
+  .q-number{font-size:12px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+  .q-text{font-size:16px;font-weight:600;color:var(--gray-800);line-height:1.55;margin-bottom:1.25rem;}
+  .explain-box{background:var(--teal-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--teal-dark);margin-top:10px;line-height:1.5;display:none;}
+
+  /* Nav buttons */
+  .nav-row{display:flex;gap:8px;margin-top:12px;}
+  .nav-btn{flex:1;padding:11px;font-size:13px;font-weight:600;border-radius:var(--radius-sm);border:1.5px solid var(--gray-200);background:var(--gray-100);color:var(--gray-600);cursor:pointer;transition:all .15s;}
+  .nav-btn:hover:not(:disabled){background:var(--gray-200);}
+  .nav-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .nav-btn.primary{background:var(--teal);color:white;border-color:var(--teal);}
+  .nav-btn.primary:hover:not(:disabled){background:var(--teal-dark);}
+  .nav-btn.submit-btn{background:var(--coral);color:white;border-color:var(--coral);}
+  .nav-btn.submit-btn:hover:not(:disabled){background:var(--coral-dark);}
+
+  /* Warning modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;display:none;}
+  .modal-bg.show{display:flex;}
+  .modal{background:white;border-radius:var(--radius);padding:1.5rem;width:90%;max-width:360px;text-align:center;}
+  .modal h3{font-size:17px;font-weight:700;color:var(--gray-800);margin-bottom:8px;}
+  .modal p{font-size:14px;color:var(--gray-600);margin-bottom:1.25rem;}
+  .modal-countdown{font-size:36px;font-weight:800;color:var(--coral-dark);margin:8px 0;}
+  .modal-btns{display:flex;gap:8px;}
+  .modal-btns button{flex:1;padding:11px;font-size:13px;font-weight:600;border-radius:var(--radius-sm);border:none;cursor:pointer;}
+
+  /* Results */
+  .score-big{font-size:56px;font-weight:800;color:var(--teal-dark);text-align:center;}
+  .score-label{font-size:14px;color:var(--gray-400);text-align:center;margin-top:4px;margin-bottom:1rem;}
+  .result-icon{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 1rem;}
+  .badge{display:inline-block;padding:4px 14px;border-radius:100px;font-size:12px;font-weight:600;}
+  .result-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+  .result-row:last-child{border-bottom:none;}
+
+  /* Waiting */
+  .waiting-anim{display:flex;gap:6px;justify-content:center;margin:1.5rem 0;}
+  .waiting-anim span{width:10px;height:10px;border-radius:50%;background:var(--teal);animation:bounce .9s infinite;}
+  .waiting-anim span:nth-child(2){animation-delay:.15s;}
+  .waiting-anim span:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+  /* Tab-switch warning banner */
+  .tab-warn{background:var(--amber-light);color:var(--amber-dark);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:600;margin-bottom:8px;display:none;}
+  .tab-warn.show{display:block;}
+
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .dot-green{background:var(--teal);}
+  .dot-gray{background:var(--gray-400);}
+  .dot-amber{background:var(--amber);animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .spinner{width:18px;height:18px;border:2px solid var(--gray-200);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error-box{background:var(--coral-light);color:var(--coral-dark);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;margin-top:10px;display:none;}
+  .progress-bar{width:100%;max-width:560px;height:5px;background:var(--gray-200);border-radius:3px;overflow:hidden;margin-bottom:1rem;}
+  .progress-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .4s;}
+  .info-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;background:var(--gray-100);color:var(--gray-600);}
+</style>
+</head>
+<body oncontextmenu="return false">
+
+<!-- HEADER -->
+<div class="header" id="app-header" style="display:none">
+  <div>
+    <div class="header-title" id="header-title">Mass Transfer Quiz</div>
+    <div class="header-sub" id="header-sub">Chemical Engineering — Level 3, Term 1</div>
+  </div>
+  <div class="timer-wrap">
+    <div class="timer-circle" id="timer-circle" style="display:none">—</div>
+    <div class="timer-label" id="timer-label" style="display:none">left</div>
+  </div>
+</div>
+
+<!-- TAB SWITCH WARNING -->
+<div class="tab-warn" id="tab-warn" style="width:100%;max-width:560px">
+  ⚠️ Tab switch detected! This has been logged. Stay on the quiz page.
+</div>
+
+<!-- SCREEN: JOIN -->
+<div class="screen active" id="screen-join">
+  <div class="card">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div style="font-size:40px;margin-bottom:8px">📐</div>
+      <h2>Mass Transfer Quiz</h2>
+      <p style="margin-top:6px">Chemical Engineering — Level 3, Term 1 · BUET</p>
+    </div>
+    <div id="join-status" style="text-align:center;padding:10px;font-size:13px;color:var(--gray-400);margin-bottom:6px">
+      <span class="spinner"></span>Checking for active session...
+    </div>
+    <label>Your Full Name</label>
+    <input type="text" id="student-name" placeholder="e.g. Rahim Ahmed" maxlength="60" autocomplete="off">
+    <label>Student ID</label>
+    <input type="text" id="student-id" placeholder="e.g. 2101045" maxlength="20" autocomplete="off">
+    <div id="join-error" class="error-box"></div>
+    <button class="btn btn-primary" id="join-btn" onclick="joinQuiz()" disabled>Join quiz →</button>
+  </div>
+</div>
+
+<!-- SCREEN: WAITING -->
+<div class="screen" id="screen-waiting">
+  <div class="card" style="text-align:center">
+    <div class="waiting-anim"><span></span><span></span><span></span></div>
+    <h2>You're in!</h2>
+    <p style="margin-top:8px">The quiz will begin automatically when your teacher opens the session. Please stay on this page.</p>
+    <div style="margin-top:1.25rem;padding:10px 14px;background:var(--gray-100);border-radius:var(--radius-sm);font-size:13px;color:var(--gray-600)">
+      Joined as <strong id="wait-name"></strong>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--gray-400)" id="wait-session-info"></div>
+  </div>
+</div>
+
+<!-- SCREEN: QUIZ (all questions, free navigation) -->
+<div class="screen" id="screen-quiz">
+  <div class="progress-bar"><div class="progress-fill" id="q-progress"></div></div>
+  <div class="card">
+    <!-- Question nav dots -->
+    <div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:600;color:var(--gray-600)">Questions</span>
+        <span style="font-size:11px;color:var(--gray-400)" id="answered-count">0 / 0 answered</span>
+      </div>
+      <div class="q-nav-grid" id="q-nav-grid"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--gray-100);margin-bottom:14px">
+    <div class="q-number" id="q-number">Question 1</div>
+    <div class="q-text" id="q-text">Loading...</div>
+    <div id="opts-container"></div>
+    <div class="explain-box" id="explain-box"></div>
+    <div class="nav-row">
+      <button class="nav-btn" id="prev-btn" onclick="goToQ(currentQIdx-1)" disabled>← Prev</button>
+      <button class="nav-btn" id="next-btn" onclick="goToQ(currentQIdx+1)">Next →</button>
+      <button class="nav-btn submit-btn" id="submit-btn" onclick="confirmSubmit()" style="display:none">Submit ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: AUTO-SUBMIT WARNING -->
+<div class="modal-bg" id="modal-timeout">
+  <div class="modal">
+    <div style="font-size:36px;margin-bottom:8px">⏰</div>
+    <h3>Time is up!</h3>
+    <p>Your quiz will be submitted automatically in:</p>
+    <div class="modal-countdown" id="modal-countdown">30</div>
+    <div class="modal-btns">
+      <button style="background:var(--coral);color:white" onclick="submitNow()">Submit now</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: RESULTS -->
+<div class="screen" id="screen-results">
+  <div class="card" style="text-align:center">
+    <div class="result-icon" id="result-icon" style="background:var(--teal-light)">🎉</div>
+    <div class="score-big" id="score-big">—</div>
+    <div class="score-label" id="score-label">out of — questions correct</div>
+    <div style="margin-bottom:1rem" id="score-badge-wrap"></div>
+    <div style="font-size:12px;color:var(--gray-400)" id="result-session-info"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:12px">Answer review</div>
+    <div id="answer-review"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCkbUXXPbAmXVMUI6gLrnG36gSqUpOK29Y",
+  authDomain: "mt1-quiz-buet.firebaseapp.com",
+  databaseURL: "https://mt1-quiz-buet-default-rtdb.firebaseio.com",
+  projectId: "mt1-quiz-buet",
+  storageBucket: "mt1-quiz-buet.firebasestorage.app",
+  messagingSenderId: "1012871794530",
+  appId: "1:1012871794530:web:0d96965710c1a9f1b4e63b"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ── State ──
+let studentId = '', studentName = '';
+let questions = [];          // shuffled questions (with shuffled opts + mapping)
+let myAnswers = {};          // { qIdx: { sel, correct } }
+let sessionKey = '';
+let sessionTopic = '';
+let sessionDuration = 0;     // total seconds
+let currentQIdx = 0;
+let mainTimerInt = null;
+let timeLeft = 0;
+let quizStarted = false;
+let submitted = false;
+let tabSwitches = 0;
+let sessionUnsubscribe = null;
+
+// ── helpers ──
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Device fingerprint ──
+function getFingerprint() {
+  const ua = navigator.userAgent;
+  const lang = navigator.language;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const scr = screen.width + 'x' + screen.height;
+  return btoa([ua, lang, tz, scr].join('|')).slice(0, 32);
+}
+
+// ── Tab-switch detection ──
+document.addEventListener('visibilitychange', () => {
+  if (!quizStarted || submitted) return;
+  if (document.hidden) {
+    tabSwitches++;
+    const warn = document.getElementById('tab-warn');
+    warn.textContent = '⚠️ Tab switch #' + tabSwitches + ' detected! This has been logged.';
+    warn.classList.add('show');
+    // Log to Firebase
+    if (studentId) {
+      set(ref(db, 'tabSwitches/' + studentId), {
+        count: tabSwitches,
+        lastAt: Date.now(),
+        name: studentName
+      });
+    }
+    setTimeout(() => warn.classList.remove('show'), 4000);
+  }
+});
+
+// ── Check session on load ──
+const sessionRef = ref(db, 'session');
+onValue(sessionRef, snap => {
+  const session = snap.val();
+  const btn = document.getElementById('join-btn');
+  const statusEl = document.getElementById('join-status');
+  if (!session || session.status === 'closed' || session.status === 'finished') {
+    statusEl.innerHTML = '<span class="status-dot dot-gray"></span>No active session right now.';
+    btn.disabled = true;
+  } else {
+    statusEl.innerHTML = '<span class="status-dot dot-green"></span>Session open: <strong>' + (session.topic || 'Mass Transfer Quiz') + '</strong>';
+    btn.disabled = false;
+    sessionKey = session.key || '';
+    sessionTopic = session.topic || 'Mass Transfer Quiz';
+    sessionDuration = session.totalTime || 0;
+    document.getElementById('header-title').textContent = sessionTopic;
+  }
+});
+
+// ── Join ──
+window.joinQuiz = async function() {
+  const sid = document.getElementById('student-id').value.trim();
+  const sname = document.getElementById('student-name').value.trim();
+  const errEl = document.getElementById('join-error');
+
+  if (!sid || !sname) {
+    errEl.textContent = 'Please enter both your name and Student ID.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Check if this ID already submitted for this session
+  const snap = await get(ref(db, 'submissions/' + sessionKey + '/' + sid));
+  if (snap.exists()) {
+    errEl.textContent = 'Student ID ' + sid + ' has already submitted for this session. Each student can only submit once.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Check device fingerprint — same device under different ID
+  const fp = getFingerprint();
+  const fpSnap = await get(ref(db, 'devices/' + sessionKey + '/' + fp));
+  if (fpSnap.exists() && fpSnap.val().sid !== sid) {
+    errEl.textContent = 'This device has already been used by another student for this session.';
+    errEl.style.display = 'block'; return;
+  }
+
+  errEl.style.display = 'none';
+  studentId = sid;
+  studentName = sname;
+
+  document.getElementById('wait-name').textContent = sname + ' (' + sid + ')';
+  document.getElementById('app-header').style.display = 'flex';
+
+  // Register presence + device
+  set(ref(db, 'connected/' + sid), { name: sname, joinedAt: Date.now(), fp });
+  set(ref(db, 'devices/' + sessionKey + '/' + fp), { sid, name: sname });
+
+  show('waiting');
+  document.getElementById('wait-session-info').textContent = 'Session: ' + sessionTopic;
+
+  // Watch session — if already active, start immediately
+  onValue(sessionRef, snap => {
+    const session = snap.val();
+    if (!session) return;
+    if ((session.status === 'active') && !quizStarted) {
+      startQuiz(session);
+    }
+    if ((session.status === 'finished' || session.status === 'closed') && quizStarted && !submitted) {
+      autoSubmit();
+    }
+  });
+};
+
+// ── Start quiz ──
+let hideAnswers = false;
+let perQTimers = [];     // timePerQ for each shuffled question
+let qTimerInt = null;
+let qTimeLeft = 0;
+
+function startQuiz(session) {
+  quizStarted = true;
+  hideAnswers = session.hideAnswers || false;
+  const rawQuestions = session.questions || [];
+  const doShuffleQ = session.shuffleQ !== false;
+  const doShuffleOpts = session.shuffleOpts !== false;
+
+  // Shuffle questions if enabled
+  const shuffled = doShuffleQ ? shuffle(rawQuestions) : [...rawQuestions];
+
+  // Shuffle options per question if enabled
+  questions = shuffled.map(q => {
+    if (!doShuffleOpts) return { ...q };
+    const indices = [0, 1, 2, 3];
+    const shuffledIdx = shuffle(indices);
+    const newOpts = shuffledIdx.map(i => q.opts[i]);
+    const newAns = shuffledIdx.indexOf(q.ans);
+    return { ...q, opts: newOpts, ans: newAns };
+  });
+
+  // Per-question time limits
+  perQTimers = questions.map(q => q.timePerQ !== undefined ? q.timePerQ : 60);
+
+  buildNavGrid();
+  goToQ(0);
+  show('quiz');
+  document.getElementById('app-header').style.display = 'flex';
+  // Hide the global timer circle — we use per-question timers now
+  document.getElementById('timer-circle').style.display = 'none';
+  document.getElementById('timer-label').style.display = 'none';
+}
+
+// ── Nav grid ──
+function buildNavGrid() {
+  const grid = document.getElementById('q-nav-grid');
+  grid.innerHTML = questions.map((_, i) => `
+    <button class="q-nav-dot${i === 0 ? ' current' : ''}" id="qd-${i}" onclick="goToQ(${i})">${i + 1}</button>
+  `).join('');
+}
+
+function updateNavGrid() {
+  questions.forEach((_, i) => {
+    const dot = document.getElementById('qd-' + i);
+    if (!dot) return;
+    dot.className = 'q-nav-dot' +
+      (i === currentQIdx ? ' current' : '') +
+      (myAnswers[i] !== undefined ? ' answered' : '');
+  });
+  const answered = Object.keys(myAnswers).length;
+  document.getElementById('answered-count').textContent = answered + ' / ' + questions.length + ' answered';
+  document.getElementById('q-progress').style.width = (answered / questions.length * 100) + '%';
+}
+
+// ── Go to question ──
+window.goToQ = function(idx) {
+  if (idx < 0 || idx >= questions.length) return;
+
+  // Stop previous per-question timer
+  clearInterval(qTimerInt);
+
+  currentQIdx = idx;
+  const q = questions[idx];
+  const isLast = idx === questions.length - 1;
+
+  document.getElementById('q-number').textContent = 'Question ' + (idx + 1) + ' of ' + questions.length;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('explain-box').style.display = 'none';
+
+  // Options
+  const cont = document.getElementById('opts-container');
+  cont.innerHTML = q.opts.map((o, i) => `
+    <button class="opt${myAnswers[idx] !== undefined && myAnswers[idx].sel === i ? ' selected' : ''}"
+      id="opt-${i}" onclick="selectOpt(${i})">
+      <span class="opt-letter">${String.fromCharCode(65 + i)}</span>
+      <span>${o}</span>
+    </button>
+  `).join('');
+
+  // If already answered, lock and show result
+  if (myAnswers[idx] !== undefined) {
+    lockOpts(idx);
+  }
+
+  // Navigation buttons
+  document.getElementById('prev-btn').disabled = idx === 0;
+  document.getElementById('next-btn').style.display = isLast ? 'none' : 'flex';
+  document.getElementById('submit-btn').style.display = isLast ? 'flex' : 'none';
+  document.getElementById('next-btn').disabled = false;
+
+  updateNavGrid();
+
+  // Start per-question timer (only if not already answered)
+  if (myAnswers[idx] === undefined) {
+    startQTimer(idx, perQTimers[idx] || 0);
+  }
+};
+
+window.selectOpt = function(i) {
+  if (myAnswers[currentQIdx] !== undefined) return; // already answered
+  const q = questions[currentQIdx];
+  const correct = i === q.ans;
+  myAnswers[currentQIdx] = { sel: i, correct };
+  lockOpts(currentQIdx);
+  updateNavGrid();
+
+  // Save to Firebase immediately
+  set(ref(db, 'answers/' + studentId + '/' + currentQIdx), {
+    sel: i, correct, time: Date.now(), name: studentName
+  });
+};
+
+// ── Per-question timer ──
+function startQTimer(qIdx, seconds) {
+  const circle = document.getElementById('timer-circle');
+  const label = document.getElementById('timer-label');
+  if (!seconds || seconds <= 0) {
+    circle.style.display = 'none';
+    label.style.display = 'none';
+    return;
+  }
+  circle.style.display = 'flex';
+  label.style.display = 'block';
+  qTimeLeft = seconds;
+  circle.className = 'timer-circle';
+  circle.textContent = qTimeLeft + 's';
+
+  clearInterval(qTimerInt);
+  qTimerInt = setInterval(() => {
+    qTimeLeft--;
+    const m = Math.floor(qTimeLeft / 60);
+    const s = qTimeLeft % 60;
+    circle.textContent = m > 0 ? m + 'm' + s + 's' : qTimeLeft + 's';
+    if (qTimeLeft <= 30) circle.className = 'timer-circle warn';
+    if (qTimeLeft <= 10) circle.className = 'timer-circle danger';
+    if (qTimeLeft <= 0) {
+      clearInterval(qTimerInt);
+      // Auto-skip this question (record as no answer, move on)
+      if (myAnswers[qIdx] === undefined) {
+        myAnswers[qIdx] = { sel: -1, correct: false };
+        set(ref(db, 'answers/' + studentId + '/' + qIdx), {
+          sel: -1, correct: false, time: Date.now(), name: studentName
+        });
+        lockOpts(qIdx);
+        updateNavGrid();
+        // Move to next or submit if last
+        if (qIdx < questions.length - 1) {
+          setTimeout(() => goToQ(qIdx + 1), 800);
+        } else {
+          setTimeout(() => submitQuiz(), 800);
+        }
+      }
+    }
+  }, 1000);
+}
+
+function lockOpts(idx) {
+  const q = questions[idx];
+  const a = myAnswers[idx];
+  document.querySelectorAll('.opt').forEach((btn, j) => {
+    btn.disabled = true;
+    if (a && j === a.sel && a.sel !== -1) btn.classList.add(a.correct ? 'correct' : 'wrong');
+    // Only show correct answer if hideAnswers is off
+    if (!hideAnswers && j === q.ans && a && !a.correct) btn.classList.add('reveal-correct');
+  });
+  // Only show explanation if hideAnswers is off
+  if (!hideAnswers && q.explain) {
+    const box = document.getElementById('explain-box');
+    box.textContent = '💡 ' + q.explain;
+    box.style.display = 'block';
+  }
+}
+
+// ── Timeout modal ──
+let countdownInt = null;
+function showTimeoutModal() {
+  const modal = document.getElementById('modal-timeout');
+  modal.classList.add('show');
+  let c = 30;
+  document.getElementById('modal-countdown').textContent = c;
+  countdownInt = setInterval(() => {
+    c--;
+    document.getElementById('modal-countdown').textContent = c;
+    if (c <= 0) { clearInterval(countdownInt); submitNow(); }
+  }, 1000);
+}
+
+window.submitNow = function() {
+  clearInterval(countdownInt);
+  document.getElementById('modal-timeout').classList.remove('show');
+  submitQuiz();
+};
+
+// ── Submit ──
+window.confirmSubmit = function() {
+  const unanswered = questions.length - Object.keys(myAnswers).length;
+  if (unanswered > 0) {
+    if (!confirm(`You have ${unanswered} unanswered question(s). Submit anyway?`)) return;
+  }
+  submitQuiz();
+};
+
+async function submitQuiz() {
+  if (submitted) return;
+  submitted = true;
+  clearInterval(mainTimerInt);
+
+  // Mark submission in Firebase (blocks re-entry)
+  await set(ref(db, 'submissions/' + sessionKey + '/' + studentId), {
+    name: studentName,
+    submittedAt: Date.now(),
+    tabSwitches
+  });
+
+  // Final answers
+  const finalAnswers = {};
+  questions.forEach((q, i) => {
+    const a = myAnswers[i];
+    finalAnswers[i] = a ? { sel: a.sel, correct: a.correct, time: Date.now(), name: studentName } : { sel: -1, correct: false, time: Date.now(), name: studentName };
+  });
+  await set(ref(db, 'answers/' + studentId), finalAnswers);
+
+  showResults();
+}
+
+function autoSubmit() {
+  clearInterval(mainTimerInt);
+  clearInterval(countdownInt);
+  document.getElementById('modal-timeout').classList.remove('show');
+  submitQuiz();
+}
+
+// ── Results ──
+function showResults() {
+  show('results');
+  document.getElementById('app-header').style.display = 'none';
+  document.getElementById('tab-warn').style.display = 'none';
+
+  const correct = questions.filter((_, i) => myAnswers[i] && myAnswers[i].correct).length;
+  const total = questions.length;
+  const pct = total ? Math.round(correct / total * 100) : 0;
+
+  document.getElementById('score-big').textContent = pct + '%';
+  document.getElementById('score-label').textContent = correct + ' out of ' + total + ' questions correct';
+  document.getElementById('result-session-info').textContent = sessionTopic;
+
+  let badge = '', icon = '';
+  if (pct >= 80) { badge = '<span class="badge" style="background:var(--teal-light);color:var(--teal-dark)">Excellent! 🌟</span>'; icon = '🎉'; }
+  else if (pct >= 60) { badge = '<span class="badge" style="background:var(--amber-light);color:var(--amber-dark)">Good effort 👍</span>'; icon = '👍'; }
+  else { badge = '<span class="badge" style="background:var(--coral-light);color:var(--coral-dark)">Keep studying 📖</span>'; icon = '📖'; }
+
+  document.getElementById('result-icon').textContent = icon;
+  document.getElementById('result-icon').style.background = pct >= 80 ? 'var(--teal-light)' : pct >= 60 ? 'var(--amber-light)' : 'var(--coral-light)';
+  document.getElementById('score-badge-wrap').innerHTML = badge;
+
+  const rev = document.getElementById('answer-review');
+  if (hideAnswers) {
+    // Score only — no per-question breakdown
+    rev.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--gray-400);font-size:13px">
+      Answer review is not available for this session.
+    </div>`;
+  } else {
+    rev.innerHTML = questions.map((q, i) => {
+      const a = myAnswers[i];
+      const notAnswered = !a || a.sel === -1;
+      const statusColor = notAnswered ? 'var(--gray-400)' : a.correct ? 'var(--teal-dark)' : 'var(--coral-dark)';
+      const statusText = notAnswered ? '— No answer' : a.correct ? '✓ Correct' : '✗ Wrong';
+      const yourAns = (!notAnswered && a.sel !== -1) ? `<div style="font-size:12px;color:var(--gray-600);margin-top:2px">Your answer: ${q.opts[a.sel]}</div>` : '';
+      const correctAns = (!notAnswered && !a.correct) ? `<div style="font-size:12px;color:var(--teal-dark);margin-top:1px">Correct: ${q.opts[q.ans]}</div>` : '';
+      const exp = q.explain ? `<div style="font-size:12px;color:var(--blue-dark);margin-top:2px">💡 ${q.explain}</div>` : '';
+      return `<div class="result-row">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--gray-700)">Q${i+1}. ${q.q.slice(0,80)}${q.q.length>80?'...':''}</div>
+          ${yourAns}${correctAns}${exp}
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${statusColor};white-space:nowrap;margin-left:8px">${statusText}</span>
+      </div>`;
+    }).join('');
+  }
+}
+</script>
+</body>
+</html>
